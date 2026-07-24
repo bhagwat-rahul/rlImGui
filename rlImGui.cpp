@@ -766,7 +766,7 @@ void ImGui_ImplRaylib_RenderDrawData(ImDrawData* draw_data)
     rlDrawRenderBatchActive();
     rlDisableBackfaceCulling();
 
-    for (int l = 0; l < draw_data->CmdListsCount; ++l)
+    for (int l = 0; l < draw_data->CmdLists.Size; ++l)
     {
         const ImDrawList* commandList = draw_data->CmdLists[l];
 
