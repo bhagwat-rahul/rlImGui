@@ -85,10 +85,10 @@ jobs:
       IMGUI_REF: ${{ needs.prepare.outputs.imgui_ref }}
       RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
     steps:
-      - name: Keep LF line endings (Windows)
+      - name: Keep line endings as committed (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: git config --global core.autocrlf input
+        run: git config --global core.autocrlf false
       - uses: actions/checkout@v4
       - name: Clone raylib ${{ env.RAYLIB_REF }}
         shell: bash
