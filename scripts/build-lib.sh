@@ -12,10 +12,13 @@
 #   wasm32-unknown-emscripten
 #
 # Environment overrides:
-#   CC            C++ compiler (defaults per triple)
-#   AR            archiver (defaults per triple)
-#   RAYLIB_DIR    path to raylib sources (default: raylib)
-#   IMGUI_DIR     path to imgui sources (default: imgui)
+#   CC                C++ compiler (defaults per triple)
+#   AR                archiver (defaults per triple)
+#   RAYLIB_DIR        path to raylib sources (default: raylib)
+#   IMGUI_DIR         path to imgui sources (default: imgui)
+#   DEAR_BINDINGS_DIR path to dear_bindings (https://github.com/dearimgui/dear_bindings);
+#                     when set, an imgui C API (dcimgui.cpp) is generated and linked in
+#   GENERATED_DIR     directory for the generated C API (default: generated)
 #
 # Output: <out-dir>/librlImGui-<target-triple>.a
 
@@ -25,6 +28,8 @@ TRIPLE="${1:?usage: build-lib.sh <target-triple> [out-dir]}"
 OUT_DIR="${2:-$(pwd)}"
 RAYLIB_DIR="${RAYLIB_DIR:-raylib}"
 IMGUI_DIR="${IMGUI_DIR:-imgui}"
+DEAR_BINDINGS_DIR="${DEAR_BINDINGS_DIR:-}"
+GENERATED_DIR="${GENERATED_DIR:-generated}"
 
 for d in "$RAYLIB_DIR" "$IMGUI_DIR"; do
 	[[ -d "$d" ]] || {
@@ -32,6 +37,27 @@ for d in "$RAYLIB_DIR" "$IMGUI_DIR"; do
 		exit 1
 	}
 done
+
+CAPI_ENABLED=0
+if [[ -n "$DEAR_BINDINGS_DIR" ]]; then
+	[[ -d "$DEAR_BINDINGS_DIR" ]] || {
+		echo "error: DEAR_BINDINGS_DIR '$DEAR_BINDINGS_DIR' not found" >&2
+		exit 1
+	}
+	if [[ ! -f "$GENERATED_DIR/dcimgui.cpp" ]]; then
+		echo "generating imgui C API with dear_bindings..."
+		python3 -c "import ply" 2>/dev/null || {
+			echo "error: generating the C API requires Python with 'ply' (pip install ply)" >&2
+			exit 1
+		}
+		mkdir -p "$GENERATED_DIR"
+		python3 "$DEAR_BINDINGS_DIR/dear_bindings.py" \
+			--nogeneratedefaultargfunctions -o "$GENERATED_DIR/dcimgui" "$IMGUI_DIR/imgui.h"
+	fi
+fi
+if [[ -f "$GENERATED_DIR/dcimgui.cpp" ]]; then
+	CAPI_ENABLED=1
+fi
 
 case "$TRIPLE" in
 x86_64-apple-darwin)
@@ -78,6 +104,9 @@ SOURCES=(
 	"$IMGUI_DIR/imgui_tables.cpp"
 	"$IMGUI_DIR/imgui_widgets.cpp"
 )
+if [[ "$CAPI_ENABLED" -eq 1 ]]; then
+	SOURCES+=("$GENERATED_DIR/dcimgui.cpp")
+fi
 
 COMMON=(
 	-O2 -std=c++17 -DNDEBUG
@@ -89,6 +118,9 @@ INCLUDES=(
 	-I"$RAYLIB_DIR/src" -I"$RAYLIB_DIR/src/external"
 	-I"$RAYLIB_DIR/src/external/glfw/include"
 )
+if [[ "$CAPI_ENABLED" -eq 1 ]]; then
+	INCLUDES+=(-I"$GENERATED_DIR")
+fi
 
 BUILD_DIR="$OUT_DIR/.build-$TRIPLE"
 rm -rf "$BUILD_DIR"
