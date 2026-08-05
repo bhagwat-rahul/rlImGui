@@ -24,7 +24,7 @@ if not exist "%IMGUI_DIR%" (
 
 set "VSWHERE=%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe"
 if not exist "%VSWHERE%" (
-	echo error: Visual Studio Installer (vswhere.exe) not found 1>&2
+	echo error: Visual Studio Installer ^(vswhere.exe^) not found 1>&2
 	exit /b 1
 )
 for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath`) do set "VSROOT=%%i"
