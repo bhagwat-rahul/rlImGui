@@ -40,7 +40,7 @@ if exist "%BUILD_DIR%" rmdir /s /q "%BUILD_DIR%"
 mkdir "%BUILD_DIR%"
 
 for %%s in (rlImGui.cpp "%IMGUI_DIR%\imgui.cpp" "%IMGUI_DIR%\imgui_demo.cpp" "%IMGUI_DIR%\imgui_draw.cpp" "%IMGUI_DIR%\imgui_tables.cpp" "%IMGUI_DIR%\imgui_widgets.cpp") do (
-	cl -nologo -O2 -std:c++17 -EHsc -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_DISABLE_OBSOLETE_KEYIO -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -I. -I"%IMGUI_DIR%" -I"%RAYLIB_DIR%\src" -I"%RAYLIB_DIR%\src\external" -I"%RAYLIB_DIR%\src\external\glfw\include" -c "%%s" -Fo"%BUILD_DIR%\"
+	cl -nologo -O2 -std:c++17 -EHsc -DNDEBUG -DPLATFORM_DESKTOP -DGRAPHICS_API_OPENGL_33 -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_DISABLE_OBSOLETE_KEYIO -D_WINSOCK_DEPRECATED_NO_WARNINGS -D_CRT_SECURE_NO_WARNINGS -I. -I"%IMGUI_DIR%" -I"%RAYLIB_DIR%\src" -I"%RAYLIB_DIR%\src\external" -I"%RAYLIB_DIR%\src\external\glfw\include" -c "%%s" -Fo"%BUILD_DIR%\\"
 	if errorlevel 1 exit /b 1
 )
 
