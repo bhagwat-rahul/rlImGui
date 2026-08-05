@@ -1,0 +1,111 @@
+name: Build static libraries
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach libraries to (empty = libs-<commit>)
+        required: false
+        default: ''
+      raylib_ref:
+        description: raylib git ref to build against (keep in sync with odin-raylib)
+        required: false
+        default: '6.0'
+      imgui_ref:
+        description: imgui git ref to build against
+        required: false
+        default: 'v1.92.8'
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rlImGui-libs-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      raylib_ref: ${{ steps.meta.outputs.raylib_ref }}
+      imgui_ref: ${{ steps.meta.outputs.imgui_ref }}
+    steps:
+      - name: Resolve tag and versions
+        id: meta
+        shell: bash
+        run: |
+          echo "raylib_ref=${{ inputs.raylib_ref || '6.0' }}" >> "$GITHUB_OUTPUT"
+          echo "imgui_ref=${{ inputs.imgui_ref || 'v1.92.8' }}" >> "$GITHUB_OUTPUT"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          elif [[ -n "${{ inputs.tag }}" ]]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=libs-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Create release if missing
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json tagName >/dev/null 2>&1; then
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --generate-notes --title "$TAG"
+          fi
+
+  build:
+    name: Build ${{ matrix.triple }}
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - triple: x86_64-apple-darwin
+            os: macos-15-intel
+          - triple: aarch64-apple-darwin
+            os: macos-14
+          - triple: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - triple: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+          - triple: x86_64-pc-windows-msvc
+            os: windows-latest
+          - triple: wasm32-unknown-emscripten
+            os: ubuntu-latest
+            emsdk: true
+    runs-on: ${{ matrix.os }}
+    env:
+      TRIPLE: ${{ matrix.triple }}
+      RAYLIB_REF: ${{ needs.prepare.outputs.raylib_ref }}
+      IMGUI_REF: ${{ needs.prepare.outputs.imgui_ref }}
+      RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Clone raylib ${{ env.RAYLIB_REF }}
+        shell: bash
+        run: git clone --depth 1 --branch "$RAYLIB_REF" https://github.com/raysan5/raylib.git raylib
+      - name: Clone imgui ${{ env.IMGUI_REF }}
+        shell: bash
+        run: git clone --depth 1 --branch "$IMGUI_REF" https://github.com/ocornut/imgui.git imgui
+      - name: Set up Emscripten
+        if: matrix.emsdk
+        uses: myMindstorm/setup-emsdk@v14
+      - name: Build library
+        if: runner.os != 'Windows'
+        shell: bash
+        run: bash scripts/build-lib.sh "$TRIPLE" dist
+      - name: Build library (MSVC)
+        if: runner.os == 'Windows'
+        shell: cmd
+        run: scripts\build-lib-msvc.bat dist
+      - name: Upload assets to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "$RELEASE_TAG" dist/* --clobber
