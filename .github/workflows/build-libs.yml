@@ -44,16 +44,18 @@ jobs:
         id: meta
         shell: bash
         run: |
-          echo "raylib_ref=${{ inputs.raylib_ref || '6.0' }}" >> "$GITHUB_OUTPUT"
-          echo "imgui_ref=${{ inputs.imgui_ref || 'v1.92.8-docking' }}" >> "$GITHUB_OUTPUT"
-          echo "dear_bindings_ref=${{ inputs.dear_bindings_ref || 'DearBindings_v0.21_ImGui_v1.92.8-docking' }}" >> "$GITHUB_OUTPUT"
-          if [[ "${{ github.event_name }}" == "push" ]]; then
-            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
-          elif [[ -n "${{ inputs.tag }}" ]]; then
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=libs-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
-          fi
+          {
+            echo "raylib_ref=${{ inputs.raylib_ref || '6.0' }}"
+            echo "imgui_ref=${{ inputs.imgui_ref || 'v1.92.8-docking' }}"
+            echo "dear_bindings_ref=${{ inputs.dear_bindings_ref || 'DearBindings_v0.21_ImGui_v1.92.8-docking' }}"
+            if [[ "${{ github.event_name }}" == "push" ]]; then
+              echo "tag=${GITHUB_REF#refs/tags/}"
+            elif [[ -n "${{ inputs.tag }}" ]]; then
+              echo "tag=${{ inputs.tag }}"
+            else
+              echo "tag=libs-${GITHUB_SHA::8}"
+            fi
+          } >> "$GITHUB_OUTPUT"
       - name: Create release if missing
         shell: bash
         env:
